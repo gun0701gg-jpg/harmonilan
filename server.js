@@ -18,6 +18,7 @@ db.exec(`
     date TEXT NOT NULL,
     size INTEGER NOT NULL CHECK(size IN (200, 500)),
     pouches INTEGER NOT NULL,
+    entered_by TEXT NOT NULL DEFAULT '',
     note TEXT,
     created_at TEXT DEFAULT (datetime('now', 'localtime'))
   );
@@ -28,6 +29,7 @@ db.exec(`
     size INTEGER NOT NULL CHECK(size IN (200, 500)),
     boxes INTEGER NOT NULL,
     pouches INTEGER NOT NULL,
+    entered_by TEXT NOT NULL DEFAULT '',
     note TEXT,
     created_at TEXT DEFAULT (datetime('now', 'localtime'))
   );
@@ -38,6 +40,7 @@ db.exec(`
     floor INTEGER NOT NULL CHECK(floor BETWEEN 2 AND 7),
     size INTEGER NOT NULL CHECK(size IN (200, 500)),
     pouches INTEGER NOT NULL,
+    entered_by TEXT NOT NULL DEFAULT '',
     note TEXT,
     created_at TEXT DEFAULT (datetime('now', 'localtime'))
   );
@@ -60,9 +63,9 @@ app.get('/api/prescriptions', (req, res) => {
 });
 
 app.post('/api/prescriptions', (req, res) => {
-  const { date, size, pouches, note } = req.body;
-  if (!date || !size || !pouches) return res.status(400).json({ error: '필수 항목 누락' });
-  const r = db.prepare('INSERT INTO prescriptions (date, size, pouches, note) VALUES (?,?,?,?)').run(date, size, pouches, note || '');
+  const { date, size, pouches, entered_by, note } = req.body;
+  if (!date || !size || !pouches || !entered_by) return res.status(400).json({ error: '필수 항목 누락' });
+  const r = db.prepare('INSERT INTO prescriptions (date, size, pouches, entered_by, note) VALUES (?,?,?,?,?)').run(date, size, pouches, entered_by, note || '');
   res.json({ id: r.lastInsertRowid });
 });
 
@@ -88,11 +91,11 @@ app.get('/api/receipts', (req, res) => {
 });
 
 app.post('/api/receipts', (req, res) => {
-  const { date, size, boxes, note } = req.body;
-  if (!date || !size || !boxes) return res.status(400).json({ error: '필수 항목 누락' });
+  const { date, size, boxes, entered_by, note } = req.body;
+  if (!date || !size || !boxes || !entered_by) return res.status(400).json({ error: '필수 항목 누락' });
   const pouchesPerBox = Number(size) === 200 ? 22 : 15;
   const pouches = Number(boxes) * pouchesPerBox;
-  const r = db.prepare('INSERT INTO receipts (date, size, boxes, pouches, note) VALUES (?,?,?,?,?)').run(date, size, boxes, pouches, note || '');
+  const r = db.prepare('INSERT INTO receipts (date, size, boxes, pouches, entered_by, note) VALUES (?,?,?,?,?,?)').run(date, size, boxes, pouches, entered_by, note || '');
   res.json({ id: r.lastInsertRowid, pouches });
 });
 
@@ -118,9 +121,9 @@ app.get('/api/usages', (req, res) => {
 });
 
 app.post('/api/usages', (req, res) => {
-  const { date, floor, size, pouches, note } = req.body;
-  if (!date || !floor || !size || !pouches) return res.status(400).json({ error: '필수 항목 누락' });
-  const r = db.prepare('INSERT INTO usages (date, floor, size, pouches, note) VALUES (?,?,?,?,?)').run(date, floor, size, pouches, note || '');
+  const { date, floor, size, pouches, entered_by, note } = req.body;
+  if (!date || !floor || !size || !pouches || !entered_by) return res.status(400).json({ error: '필수 항목 누락' });
+  const r = db.prepare('INSERT INTO usages (date, floor, size, pouches, entered_by, note) VALUES (?,?,?,?,?,?)').run(date, floor, size, pouches, entered_by, note || '');
   res.json({ id: r.lastInsertRowid });
 });
 

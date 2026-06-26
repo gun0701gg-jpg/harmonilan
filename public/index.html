@@ -239,6 +239,40 @@
   }
   #toast.show { transform: translateX(-50%) translateY(0); }
 
+  /* 이름 등록 오버레이 */
+  #name-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.6);
+    z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  #name-overlay.hidden { display: none; }
+  .name-card {
+    background: white;
+    border-radius: 16px;
+    padding: 28px 24px;
+    width: 100%; max-width: 340px;
+    text-align: center;
+  }
+  .name-card h2 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .name-card p { font-size: 13px; color: var(--gray); margin-bottom: 20px; line-height: 1.5; }
+  .name-card input {
+    width: 100%; padding: 12px; border: 2px solid var(--border);
+    border-radius: 8px; font-size: 16px; text-align: center; margin-bottom: 12px;
+  }
+  .name-card input:focus { outline: none; border-color: var(--blue); }
+  .name-warning { font-size: 12px; color: var(--orange); margin-bottom: 16px; }
+
+  /* 헤더 입력자 배지 */
+  .user-badge {
+    background: rgba(255,255,255,.2);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
   /* 용량 선택 버튼 */
   .size-btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .size-btn {
@@ -276,9 +310,20 @@
 </head>
 <body>
 
+<!-- 이름 등록 오버레이 -->
+<div id="name-overlay">
+  <div class="name-card">
+    <h2>👤 사용자 등록</h2>
+    <p>이 기기에서 사용할 이름을 입력하세요.<br>한 번 등록하면 자동으로 기록됩니다.</p>
+    <input type="text" id="name-input" placeholder="이름 입력" maxlength="10">
+    <p class="name-warning">⚠️ 등록 후 변경이 제한됩니다</p>
+    <button class="btn btn-blue" onclick="registerName()">등록하기</button>
+  </div>
+</div>
+
 <header>
   <h1>🏥 하모닐란 재고 관리</h1>
-  <span id="header-date"></span>
+  <span class="user-badge" id="user-badge"></span>
 </header>
 
 <div class="tabs">
@@ -588,8 +633,9 @@ async function savePrescription() {
   const size = document.getElementById('presc-size').value;
   const pouches = document.getElementById('presc-pouches').value;
   const note = document.getElementById('presc-note').value;
+  const entered_by = getUser();
   if (!date || !pouches) { toast('날짜와 포수를 입력하세요'); return; }
-  await api('/api/prescriptions', 'POST', { date, size: Number(size), pouches: Number(pouches), note });
+  await api('/api/prescriptions', 'POST', { date, size: Number(size), pouches: Number(pouches), entered_by, note });
   toast('처방이 저장되었습니다');
   document.getElementById('presc-pouches').value = '';
   document.getElementById('presc-note').value = '';
@@ -607,7 +653,7 @@ async function loadPrescriptions() {
     <div class="record-item">
       <div>
         <div class="main">${r.date} <span class="badge-${r.size}">${r.size}ml</span></div>
-        <div class="sub">${num(r.pouches)}포${r.note ? ' · ' + r.note : ''}</div>
+        <div class="sub">${num(r.pouches)}포 · 👤${r.entered_by}${r.note ? ' · ' + r.note : ''}</div>
       </div>
       <div class="right">
         <button class="btn-sm" onclick="delPrescription(${r.id})">삭제</button>
@@ -667,8 +713,9 @@ async function saveReceipt() {
   const size = document.getElementById('recv-size').value;
   const boxes = document.getElementById('recv-boxes').value;
   const note = document.getElementById('recv-note').value;
+  const entered_by = getUser();
   if (!date || !boxes) { toast('날짜와 박스 수를 입력하세요'); return; }
-  const result = await api('/api/receipts', 'POST', { date, size: Number(size), boxes: Number(boxes), note });
+  const result = await api('/api/receipts', 'POST', { date, size: Number(size), boxes: Number(boxes), entered_by, note });
   toast(`저장 완료! ${num(result.pouches)}포 입고`);
   document.getElementById('recv-boxes').value = '';
   document.getElementById('recv-note').value = '';
@@ -687,7 +734,7 @@ async function loadReceipts() {
     <div class="record-item">
       <div>
         <div class="main">${r.date} <span class="badge-${r.size}">${r.size}ml</span></div>
-        <div class="sub">${r.boxes}박스 = ${num(r.pouches)}포${r.note ? ' · ' + r.note : ''}</div>
+        <div class="sub">${r.boxes}박스 = ${num(r.pouches)}포 · 👤${r.entered_by}${r.note ? ' · ' + r.note : ''}</div>
       </div>
       <div class="right">
         <button class="btn-sm" onclick="delReceipt(${r.id})">삭제</button>
@@ -715,8 +762,9 @@ async function saveUsage() {
   const size = document.getElementById('use-size').value;
   const pouches = document.getElementById('use-pouches').value;
   const note = document.getElementById('use-note').value;
+  const entered_by = getUser();
   if (!date || !pouches) { toast('날짜와 포수를 입력하세요'); return; }
-  await api('/api/usages', 'POST', { date, floor: Number(floor), size: Number(size), pouches: Number(pouches), note });
+  await api('/api/usages', 'POST', { date, floor: Number(floor), size: Number(size), pouches: Number(pouches), entered_by, note });
   toast('저장되었습니다');
   document.getElementById('use-pouches').value = '';
   document.getElementById('use-note').value = '';
@@ -734,7 +782,7 @@ async function loadUsages() {
     <div class="record-item">
       <div>
         <div class="main">${r.date} <span class="badge-${r.size}">${r.size}ml</span> ${r.floor}층</div>
-        <div class="sub">${num(r.pouches)}포${r.note ? ' · ' + r.note : ''}</div>
+        <div class="sub">${num(r.pouches)}포 · 👤${r.entered_by}${r.note ? ' · ' + r.note : ''}</div>
       </div>
       <div class="right">
         <button class="btn-sm" onclick="delUsage(${r.id})">삭제</button>
@@ -846,12 +894,28 @@ async function loadReport() {
   }
 }
 
+// ─── 입력자 관리 ──────────────────────────────────────────────────────────────
+function getUser() { return localStorage.getItem('harmonilan_user') || ''; }
+
+function registerName() {
+  const name = document.getElementById('name-input').value.trim();
+  if (!name) { toast('이름을 입력하세요'); return; }
+  localStorage.setItem('harmonilan_user', name);
+  document.getElementById('name-overlay').classList.add('hidden');
+  document.getElementById('user-badge').textContent = name;
+}
+
 // ─── 초기화 ───────────────────────────────────────────────────────────────────
 (function init() {
   initMonths();
-  const now = new Date();
-  document.getElementById('header-date').textContent =
-    `${now.getMonth()+1}월 ${now.getDate()}일`;
+
+  const user = getUser();
+  if (!user) {
+    document.getElementById('name-overlay').classList.remove('hidden');
+  } else {
+    document.getElementById('name-overlay').classList.add('hidden');
+    document.getElementById('user-badge').textContent = user;
+  }
 
   initPrescForm();
   initRecvForm();
