@@ -319,10 +319,15 @@
     </div>
     <div class="form-row">
       <label>용량</label>
-      <select id="presc-size">
-        <option value="200">200ml</option>
-        <option value="500">500ml</option>
-      </select>
+      <div class="size-btn-group">
+        <button type="button" class="size-btn active" data-size="200" onclick="selectSizePresc(this)">
+          <span class="size-ml">200ml</span>
+        </button>
+        <button type="button" class="size-btn" data-size="500" onclick="selectSizePresc(this)">
+          <span class="size-ml">500ml</span>
+        </button>
+      </div>
+      <input type="hidden" id="presc-size" value="200">
     </div>
     <div class="form-row">
       <label>처방량 (포)</label>
@@ -413,10 +418,15 @@
       </div>
       <div>
         <label>용량</label>
-        <select id="use-size">
-          <option value="200">200ml</option>
-          <option value="500">500ml</option>
-        </select>
+        <div class="size-btn-group">
+          <button type="button" class="size-btn active" data-size="200" onclick="selectSizeUse(this)">
+            <span class="size-ml">200ml</span>
+          </button>
+          <button type="button" class="size-btn" data-size="500" onclick="selectSizeUse(this)">
+            <span class="size-ml">500ml</span>
+          </button>
+        </div>
+        <input type="hidden" id="use-size" value="200">
       </div>
     </div>
     <div class="form-row">
@@ -620,10 +630,22 @@ function initRecvForm() {
 }
 
 function selectSize(btn) {
-  document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+  btn.closest('.size-btn-group').querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('recv-size').value = btn.dataset.size;
   calcRecvPouches();
+}
+
+function selectSizePresc(btn) {
+  btn.closest('.size-btn-group').querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('presc-size').value = btn.dataset.size;
+}
+
+function selectSizeUse(btn) {
+  btn.closest('.size-btn-group').querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('use-size').value = btn.dataset.size;
 }
 
 function calcRecvPouches() {
