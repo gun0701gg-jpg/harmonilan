@@ -13,6 +13,18 @@ app.use(express.static('public'));
 
 // DB 초기화
 db.exec(`
+  PRAGMA journal_mode=WAL;
+`);
+
+// 기존 테이블에 entered_by 컬럼 추가 (없을 경우에만)
+for (const table of ['prescriptions', 'receipts', 'usages']) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
+  if (!cols.includes('entered_by')) {
+    db.prepare(`ALTER TABLE ${table} ADD COLUMN entered_by TEXT NOT NULL DEFAULT ''`).run();
+  }
+}
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS prescriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT NOT NULL,
