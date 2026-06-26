@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>하모닐란 재고 관리</title>
+<style>
+  :root {
+    --blue: #2563eb;
+    --blue-light: #eff6ff;
+    --green: #16a34a;
+    --green-light: #f0fdf4;
+    --red: #dc2626;
+    --red-light: #fef2f2;
+    --orange: #ea580c;
+    --orange-light: #fff7ed;
+    --gray: #6b7280;
+    --gray-light: #f3f4f6;
+    --border: #e5e7eb;
+    --text: #111827;
+    --text2: #374151;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f9fafb;
+    color: var(--text);
+    font-size: 15px;
+  }
+
+  /* 헤더 */
+  header {
+    background: var(--blue);
+    color: white;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 4px rgba(0,0,0,.15);
+  }
+  header h1 { font-size: 17px; font-weight: 700; }
+  header span { font-size: 12px; opacity: .85; }
+
+  /* 탭 바 */
+  .tabs {
+    display: flex;
+    background: white;
+    border-bottom: 2px solid var(--border);
+    position: sticky;
+    top: 49px;
+    z-index: 99;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex: 1;
+    min-width: 72px;
+    padding: 12px 4px;
+    border: none;
+    background: none;
+    font-size: 13px;
+    color: var(--gray);
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all .15s;
+  }
+  .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+
+  /* 콘텐츠 */
+  .content { display: none; padding: 16px; max-width: 600px; margin: 0 auto; }
+  .content.active { display: block; }
+
+  /* 카드 */
+  .card {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text2);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* 폼 */
+  .form-row { margin-bottom: 12px; }
+  .form-row label { display: block; font-size: 13px; color: var(--gray); margin-bottom: 4px; font-weight: 500; }
+  .form-row input, .form-row select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    color: var(--text);
+    background: white;
+    -webkit-appearance: none;
+  }
+  .form-row input:focus, .form-row select:focus {
+    outline: none;
+    border-color: var(--blue);
+  }
+  .form-row.inline { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* 버튼 */
+  .btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .btn:active { opacity: .8; }
+  .btn-blue { background: var(--blue); color: white; }
+  .btn-green { background: var(--green); color: white; }
+  .btn-orange { background: var(--orange); color: white; }
+  .btn-sm {
+    width: auto;
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    background: var(--red-light);
+    color: var(--red);
+  }
+
+  /* 자동계산 배지 */
+  .auto-badge {
+    background: var(--green-light);
+    color: var(--green);
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    margin-top: -4px;
+    margin-bottom: 12px;
+  }
+
+  /* 요약 카드 (대시보드) */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .stat-card {
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-card .label { font-size: 12px; margin-bottom: 4px; font-weight: 500; }
+  .stat-card .value { font-size: 24px; font-weight: 700; }
+  .stat-card .sub { font-size: 11px; margin-top: 2px; opacity: .7; }
+  .stat-stock { background: var(--green-light); color: var(--green); }
+  .stat-undeliv { background: var(--orange-light); color: var(--orange); }
+  .stat-presc { background: var(--blue-light); color: var(--blue); }
+  .stat-receipt { background: var(--gray-light); color: var(--text2); }
+
+  /* 테이블 */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th {
+    background: var(--gray-light);
+    padding: 8px 6px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text2);
+    font-size: 12px;
+  }
+  .tbl td { padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--border); }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl .total-row { background: #f0f9ff; font-weight: 700; color: var(--blue); }
+  .tbl .grand-row { background: #fef9c3; font-weight: 700; color: #92400e; }
+
+  /* 기록 목록 */
+  .record-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .record-item:last-child { border-bottom: none; }
+  .record-item .main { font-size: 14px; font-weight: 500; }
+  .record-item .sub { font-size: 12px; color: var(--gray); margin-top: 2px; }
+  .record-item .right { text-align: right; }
+  .badge-200 { background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-500 { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+
+  /* 월 선택기 */
+  .month-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 14px;
+    justify-content: center;
+  }
+  .month-picker button {
+    border: none;
+    background: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--blue);
+    padding: 0 8px;
+    line-height: 1;
+  }
+  .month-picker span { font-size: 16px; font-weight: 700; min-width: 100px; text-align: center; }
+
+  /* 토스트 */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #1f2937;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    z-index: 999;
+    transition: transform .25s;
+    white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  .empty-msg { text-align: center; color: var(--gray); padding: 20px; font-size: 14px; }
+  .section-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin: 16px 0 8px;
+  }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏥 하모닐란 재고 관리</h1>
+  <span id="header-date"></span>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('dashboard')">📊 현황</button>
+  <button class="tab-btn" onclick="switchTab('prescription')">📋 처방</button>
+  <button class="tab-btn" onclick="switchTab('receipt')">📦 입고</button>
+  <button class="tab-btn" onclick="switchTab('usage')">💊 사용</button>
+  <button class="tab-btn" onclick="switchTab('report')">📈 월간</button>
+</div>
+
+<!-- ───────────── 현황 탭 ───────────── -->
+<div id="tab-dashboard" class="content active">
+  <div class="month-picker">
+    <button onclick="changeMonth(-1)">‹</button>
+    <span id="dash-month-label"></span>
+    <button onclick="changeMonth(1)">›</button>
+  </div>
+
+  <p class="section-label">200ml 현황</p>
+  <div class="stat-grid" id="stat-200"></div>
+
+  <p class="section-label">500ml 현황</p>
+  <div class="stat-grid" id="stat-500"></div>
+
+  <div class="card">
+    <div class="card-title">⚠️ 미입고 현황</div>
+    <div id="undelivered-info"></div>
+  </div>
+</div>
+
+<!-- ───────────── 처방 탭 ───────────── -->
+<div id="tab-prescription" class="content">
+  <div class="card">
+    <div class="card-title">📋 처방 입력</div>
+    <div class="form-row">
+      <label>처방일</label>
+      <input type="date" id="presc-date">
+    </div>
+    <div class="form-row">
+      <label>용량</label>
+      <select id="presc-size">
+        <option value="200">200ml</option>
+        <option value="500">500ml</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>처방량 (포)</label>
+      <input type="number" id="presc-pouches" placeholder="포수 입력" min="1">
+    </div>
+    <div class="form-row">
+      <label>비고 (선택)</label>
+      <input type="text" id="presc-note" placeholder="메모">
+    </div>
+    <button class="btn btn-blue" onclick="savePrescription()">저장</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 처방 기록</div>
+    <div class="month-picker" style="margin-bottom:12px">
+      <button onclick="changePrescMonth(-1)">‹</button>
+      <span id="presc-month-label"></span>
+      <button onclick="changePrescMonth(1)">›</button>
+    </div>
+    <div id="presc-list"></div>
+  </div>
+</div>
+
+<!-- ───────────── 입고 탭 ───────────── -->
+<div id="tab-receipt" class="content">
+  <div class="card">
+    <div class="card-title">📦 입고 입력</div>
+    <div class="form-row">
+      <label>입고일</label>
+      <input type="date" id="recv-date">
+    </div>
+    <div class="form-row">
+      <label>용량</label>
+      <select id="recv-size" onchange="calcRecvPouches()">
+        <option value="200">200ml (박스당 22포)</option>
+        <option value="500">500ml (박스당 15포)</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>박스 수량</label>
+      <input type="number" id="recv-boxes" placeholder="박스 수 입력" min="1" oninput="calcRecvPouches()">
+    </div>
+    <div class="auto-badge" id="recv-pouches-badge">박스 수를 입력하면 포수가 자동 계산됩니다</div>
+    <div class="form-row">
+      <label>비고 (선택)</label>
+      <input type="text" id="recv-note" placeholder="메모">
+    </div>
+    <button class="btn btn-green" onclick="saveReceipt()">저장</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📦 입고 기록</div>
+    <div class="month-picker" style="margin-bottom:12px">
+      <button onclick="changeRecvMonth(-1)">‹</button>
+      <span id="recv-month-label"></span>
+      <button onclick="changeRecvMonth(1)">›</button>
+    </div>
+    <div id="recv-list"></div>
+  </div>
+</div>
+
+<!-- ───────────── 사용 탭 ───────────── -->
+<div id="tab-usage" class="content">
+  <div class="card">
+    <div class="card-title">💊 사용 입력</div>
+    <div class="form-row">
+      <label>사용일</label>
+      <input type="date" id="use-date">
+    </div>
+    <div class="form-row inline">
+      <div>
+        <label>층</label>
+        <select id="use-floor">
+          <option value="2">2층</option>
+          <option value="3">3층</option>
+          <option value="4">4층</option>
+          <option value="5">5층</option>
+          <option value="6">6층</option>
+          <option value="7">7층</option>
+        </select>
+      </div>
+      <div>
+        <label>용량</label>
+        <select id="use-size">
+          <option value="200">200ml</option>
+          <option value="500">500ml</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>사용량 (포)</label>
+      <input type="number" id="use-pouches" placeholder="포수 입력" min="1">
+    </div>
+    <div class="form-row">
+      <label>비고 (선택)</label>
+      <input type="text" id="use-note" placeholder="메모">
+    </div>
+    <button class="btn btn-orange" onclick="saveUsage()">저장</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💊 사용 기록</div>
+    <div class="month-picker" style="margin-bottom:12px">
+      <button onclick="changeUseMonth(-1)">‹</button>
+      <span id="use-month-label"></span>
+      <button onclick="changeUseMonth(1)">›</button>
+    </div>
+    <div id="use-list"></div>
+  </div>
+</div>
+
+<!-- ───────────── 월간 보고서 탭 ───────────── -->
+<div id="tab-report" class="content">
+  <div class="month-picker">
+    <button onclick="changeReportMonth(-1)">‹</button>
+    <span id="report-month-label"></span>
+    <button onclick="changeReportMonth(1)">›</button>
+  </div>
+
+  <div id="report-200"></div>
+  <div id="report-500"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = '';  // same origin
+
+// ─── 상태 ────────────────────────────────────────────────────────────────────
+let state = {
+  dash: { year: 0, month: 0 },
+  presc: { year: 0, month: 0 },
+  recv: { year: 0, month: 0 },
+  use: { year: 0, month: 0 },
+  report: { year: 0, month: 0 },
+};
+
+function initMonths() {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth() + 1;
+  for (const k of Object.keys(state)) state[k] = { year: y, month: m };
+}
+
+// ─── 유틸 ────────────────────────────────────────────────────────────────────
+function fmtMonth(y, m) { return `${y}년 ${m}월`; }
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function num(n) { return Number(n).toLocaleString(); }
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+async function api(path, method = 'GET', body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  return res.json();
+}
+
+// ─── 탭 전환 ─────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+  event.currentTarget.classList.add('active');
+
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'prescription') { loadPrescriptions(); }
+  if (name === 'receipt') { loadReceipts(); }
+  if (name === 'usage') { loadUsages(); }
+  if (name === 'report') loadReport();
+}
+
+// ─── 월 변경 ─────────────────────────────────────────────────────────────────
+function shiftMonth(key, delta) {
+  let { year, month } = state[key];
+  month += delta;
+  if (month > 12) { month = 1; year++; }
+  if (month < 1) { month = 12; year--; }
+  state[key] = { year, month };
+}
+
+function changeMonth(d) { shiftMonth('dash', d); loadDashboard(); }
+function changePrescMonth(d) { shiftMonth('presc', d); loadPrescriptions(); }
+function changeRecvMonth(d) { shiftMonth('recv', d); loadReceipts(); }
+function changeUseMonth(d) { shiftMonth('use', d); loadUsages(); }
+function changeReportMonth(d) { shiftMonth('report', d); loadReport(); }
+
+// ─── 대시보드 ─────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const { year, month } = state.dash;
+  document.getElementById('dash-month-label').textContent = fmtMonth(year, month);
+  const data = await api(`/api/summary?year=${year}&month=${month}`);
+
+  for (const size of [200, 500]) {
+    const d = data[size];
+    document.getElementById(`stat-${size}`).innerHTML = `
+      <div class="stat-card stat-stock">
+        <div class="label">현재 재고</div>
+        <div class="value">${num(d.stock)}</div>
+        <div class="sub">포</div>
+      </div>
+      <div class="stat-card stat-receipt">
+        <div class="label">이달 입고</div>
+        <div class="value">${num(d.receipt)}</div>
+        <div class="sub">${num(d.receiptBoxes)}박스</div>
+      </div>
+      <div class="stat-card stat-presc">
+        <div class="label">이달 처방</div>
+        <div class="value">${num(d.prescription)}</div>
+        <div class="sub">포</div>
+      </div>
+      <div class="stat-card ${d.usage > 0 ? 'stat-undeliv' : 'stat-stock'}">
+        <div class="label">이달 사용</div>
+        <div class="value">${num(d.usage)}</div>
+        <div class="sub">포</div>
+      </div>
+    `;
+  }
+
+  // 미입고
+  let html = '';
+  for (const size of [200, 500]) {
+    const d = data[size];
+    const undeliv = d.undelivered;
+    const color = undeliv > 0 ? 'var(--orange)' : 'var(--green)';
+    const icon = undeliv > 0 ? '⚠️' : '✅';
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span>${icon} <strong>${size}ml</strong></span>
+      <span style="color:${color};font-weight:700">${undeliv > 0 ? `미입고 ${num(undeliv)}포` : '정상 입고'}</span>
+    </div>`;
+  }
+  document.getElementById('undelivered-info').innerHTML = html;
+}
+
+// ─── 처방 ─────────────────────────────────────────────────────────────────────
+function initPrescForm() {
+  document.getElementById('presc-date').value = todayStr();
+}
+
+async function savePrescription() {
+  const date = document.getElementById('presc-date').value;
+  const size = document.getElementById('presc-size').value;
+  const pouches = document.getElementById('presc-pouches').value;
+  const note = document.getElementById('presc-note').value;
+  if (!date || !pouches) { toast('날짜와 포수를 입력하세요'); return; }
+  await api('/api/prescriptions', 'POST', { date, size: Number(size), pouches: Number(pouches), note });
+  toast('처방이 저장되었습니다');
+  document.getElementById('presc-pouches').value = '';
+  document.getElementById('presc-note').value = '';
+  loadPrescriptions();
+  loadDashboard();
+}
+
+async function loadPrescriptions() {
+  const { year, month } = state.presc;
+  document.getElementById('presc-month-label').textContent = fmtMonth(year, month);
+  const data = await api(`/api/prescriptions?year=${year}&month=${month}`);
+  const el = document.getElementById('presc-list');
+  if (!data.length) { el.innerHTML = '<div class="empty-msg">기록이 없습니다</div>'; return; }
+  el.innerHTML = data.map(r => `
+    <div class="record-item">
+      <div>
+        <div class="main">${r.date} <span class="badge-${r.size}">${r.size}ml</span></div>
+        <div class="sub">${num(r.pouches)}포${r.note ? ' · ' + r.note : ''}</div>
+      </div>
+      <div class="right">
+        <button class="btn-sm" onclick="delPrescription(${r.id})">삭제</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function delPrescription(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  await api(`/api/prescriptions/${id}`, 'DELETE');
+  toast('삭제되었습니다');
+  loadPrescriptions();
+  loadDashboard();
+}
+
+// ─── 입고 ─────────────────────────────────────────────────────────────────────
+function initRecvForm() {
+  document.getElementById('recv-date').value = todayStr();
+}
+
+function calcRecvPouches() {
+  const size = Number(document.getElementById('recv-size').value);
+  const boxes = Number(document.getElementById('recv-boxes').value);
+  const perBox = size === 200 ? 22 : 15;
+  const badge = document.getElementById('recv-pouches-badge');
+  if (boxes > 0) {
+    badge.textContent = `${boxes}박스 × ${perBox}포 = ${num(boxes * perBox)}포`;
+    badge.style.background = 'var(--green-light)';
+  } else {
+    badge.textContent = '박스 수를 입력하면 포수가 자동 계산됩니다';
+    badge.style.background = 'var(--gray-light)';
+  }
+}
+
+async function saveReceipt() {
+  const date = document.getElementById('recv-date').value;
+  const size = document.getElementById('recv-size').value;
+  const boxes = document.getElementById('recv-boxes').value;
+  const note = document.getElementById('recv-note').value;
+  if (!date || !boxes) { toast('날짜와 박스 수를 입력하세요'); return; }
+  const result = await api('/api/receipts', 'POST', { date, size: Number(size), boxes: Number(boxes), note });
+  toast(`저장 완료! ${num(result.pouches)}포 입고`);
+  document.getElementById('recv-boxes').value = '';
+  document.getElementById('recv-note').value = '';
+  calcRecvPouches();
+  loadReceipts();
+  loadDashboard();
+}
+
+async function loadReceipts() {
+  const { year, month } = state.recv;
+  document.getElementById('recv-month-label').textContent = fmtMonth(year, month);
+  const data = await api(`/api/receipts?year=${year}&month=${month}`);
+  const el = document.getElementById('recv-list');
+  if (!data.length) { el.innerHTML = '<div class="empty-msg">기록이 없습니다</div>'; return; }
+  el.innerHTML = data.map(r => `
+    <div class="record-item">
+      <div>
+        <div class="main">${r.date} <span class="badge-${r.size}">${r.size}ml</span></div>
+        <div class="sub">${r.boxes}박스 = ${num(r.pouches)}포${r.note ? ' · ' + r.note : ''}</div>
+      </div>
+      <div class="right">
+        <button class="btn-sm" onclick="delReceipt(${r.id})">삭제</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function delReceipt(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  await api(`/api/receipts/${id}`, 'DELETE');
+  toast('삭제되었습니다');
+  loadReceipts();
+  loadDashboard();
+}
+
+// ─── 사용 ─────────────────────────────────────────────────────────────────────
+function initUseForm() {
+  document.getElementById('use-date').value = todayStr();
+}
+
+async function saveUsage() {
+  const date = document.getElementById('use-date').value;
+  const floor = document.getElementById('use-floor').value;
+  const size = document.getElementById('use-size').value;
+  const pouches = document.getElementById('use-pouches').value;
+  const note = document.getElementById('use-note').value;
+  if (!date || !pouches) { toast('날짜와 포수를 입력하세요'); return; }
+  await api('/api/usages', 'POST', { date, floor: Number(floor), size: Number(size), pouches: Number(pouches), note });
+  toast('저장되었습니다');
+  document.getElementById('use-pouches').value = '';
+  document.getElementById('use-note').value = '';
+  loadUsages();
+  loadDashboard();
+}
+
+async function loadUsages() {
+  const { year, month } = state.use;
+  document.getElementById('use-month-label').textContent = fmtMonth(year, month);
+  const data = await api(`/api/usages?year=${year}&month=${month}`);
+  const el = document.getElementById('use-list');
+  if (!data.length) { el.innerHTML = '<div class="empty-msg">기록이 없습니다</div>'; return; }
+  el.innerHTML = data.map(r => `
+    <div class="record-item">
+      <div>
+        <div class="main">${r.date} <span class="badge-${r.size}">${r.size}ml</span> ${r.floor}층</div>
+        <div class="sub">${num(r.pouches)}포${r.note ? ' · ' + r.note : ''}</div>
+      </div>
+      <div class="right">
+        <button class="btn-sm" onclick="delUsage(${r.id})">삭제</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function delUsage(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  await api(`/api/usages/${id}`, 'DELETE');
+  toast('삭제되었습니다');
+  loadUsages();
+  loadDashboard();
+}
+
+// ─── 월간 보고서 ─────────────────────────────────────────────────────────────
+async function loadReport() {
+  const { year, month } = state.report;
+  document.getElementById('report-month-label').textContent = fmtMonth(year, month);
+  const summary = await api(`/api/summary?year=${year}&month=${month}`);
+  const usages = await api(`/api/usages?year=${year}&month=${month}`);
+
+  for (const size of [200, 500]) {
+    const d = summary[size];
+
+    // 날짜별로 층 사용량 집계
+    const dateFloorMap = {};
+    usages.filter(u => u.size === size).forEach(u => {
+      if (!dateFloorMap[u.date]) dateFloorMap[u.date] = {};
+      dateFloorMap[u.date][u.floor] = (dateFloorMap[u.date][u.floor] || 0) + u.pouches;
+    });
+    const dates = Object.keys(dateFloorMap).sort();
+
+    // 층별 합계
+    const floorTotals = {};
+    for (let f = 2; f <= 7; f++) floorTotals[f] = d.floorUsages[f] || 0;
+    const grandTotal = Object.values(floorTotals).reduce((a, b) => a + b, 0);
+
+    let tableRows = '';
+    if (dates.length === 0) {
+      tableRows = `<tr><td colspan="8" style="color:var(--gray);padding:16px">사용 기록이 없습니다</td></tr>`;
+    } else {
+      dates.forEach(dt => {
+        const row = dateFloorMap[dt];
+        const rowTotal = Object.values(row).reduce((a, b) => a + b, 0);
+        tableRows += `<tr>
+          <td>${dt.slice(5)}</td>
+          ${[2,3,4,5,6,7].map(f => `<td>${row[f] || '-'}</td>`).join('')}
+          <td style="font-weight:600">${rowTotal}</td>
+        </tr>`;
+      });
+    }
+
+    const html = `
+      <div class="card">
+        <div class="card-title">${size === 200 ? '💙' : '💚'} ${size}ml 월간 보고서</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+          <div style="background:var(--blue-light);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:11px;color:var(--blue);font-weight:600">처방</div>
+            <div style="font-size:18px;font-weight:700;color:var(--blue)">${num(d.prescription)}</div>
+            <div style="font-size:11px;color:var(--gray)">포</div>
+          </div>
+          <div style="background:var(--green-light);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:11px;color:var(--green);font-weight:600">입고</div>
+            <div style="font-size:18px;font-weight:700;color:var(--green)">${num(d.receipt)}</div>
+            <div style="font-size:11px;color:var(--gray)">${d.receiptBoxes}박스</div>
+          </div>
+          <div style="background:var(--orange-light);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:11px;color:var(--orange);font-weight:600">사용</div>
+            <div style="font-size:18px;font-weight:700;color:var(--orange)">${num(d.usage)}</div>
+            <div style="font-size:11px;color:var(--gray)">포</div>
+          </div>
+        </div>
+
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">층별 사용량</div>
+        <div style="overflow-x:auto">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>날짜</th>
+                ${[2,3,4,5,6,7].map(f => `<th>${f}층</th>`).join('')}
+                <th>합계</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+              <tr class="total-row">
+                <td>합계</td>
+                ${[2,3,4,5,6,7].map(f => `<td>${floorTotals[f] || 0}</td>`).join('')}
+                <td>${grandTotal}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:12px;padding:10px;background:${d.undelivered > 0 ? 'var(--orange-light)' : 'var(--green-light)'};border-radius:8px;font-size:13px;text-align:center;font-weight:600;color:${d.undelivered > 0 ? 'var(--orange)' : 'var(--green)'}">
+          ${d.undelivered > 0
+            ? `⚠️ 미입고 ${num(d.undelivered)}포 (처방 ${num(d.prescription)}포 - 입고 ${num(d.receipt)}포)`
+            : `✅ 전량 입고 완료`}
+        </div>
+        <div style="margin-top:8px;padding:10px;background:var(--gray-light);border-radius:8px;font-size:13px;text-align:center;font-weight:600">
+          📦 현재 재고: ${num(d.stock)}포
+        </div>
+      </div>
+    `;
+    document.getElementById(`report-${size}`).innerHTML = html;
+  }
+}
+
+// ─── 초기화 ───────────────────────────────────────────────────────────────────
+(function init() {
+  initMonths();
+  const now = new Date();
+  document.getElementById('header-date').textContent =
+    `${now.getMonth()+1}월 ${now.getDate()}일`;
+
+  initPrescForm();
+  initRecvForm();
+  initUseForm();
+  loadDashboard();
+})();
+</script>
+</body>
+</html>
