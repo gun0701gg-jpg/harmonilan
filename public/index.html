@@ -239,6 +239,29 @@
   }
   #toast.show { transform: translateX(-50%) translateY(0); }
 
+  /* 용량 선택 버튼 */
+  .size-btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .size-btn {
+    padding: 12px 8px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: all .15s;
+  }
+  .size-btn .size-ml { font-size: 17px; font-weight: 700; color: var(--gray); }
+  .size-btn .size-sub { font-size: 11px; color: var(--gray); }
+  .size-btn.active {
+    border-color: var(--blue);
+    background: var(--blue-light);
+  }
+  .size-btn.active .size-ml { color: var(--blue); }
+  .size-btn.active .size-sub { color: var(--blue); opacity: .8; }
+
   .empty-msg { text-align: center; color: var(--gray); padding: 20px; font-size: 14px; }
   .section-label {
     font-size: 12px;
@@ -333,10 +356,17 @@
     </div>
     <div class="form-row">
       <label>용량</label>
-      <select id="recv-size" onchange="calcRecvPouches()">
-        <option value="200">200ml (박스당 22포)</option>
-        <option value="500">500ml (박스당 15포)</option>
-      </select>
+      <div class="size-btn-group">
+        <button type="button" class="size-btn active" data-size="200" onclick="selectSize(this)">
+          <span class="size-ml">200ml</span>
+          <span class="size-sub">박스당 22포</span>
+        </button>
+        <button type="button" class="size-btn" data-size="500" onclick="selectSize(this)">
+          <span class="size-ml">500ml</span>
+          <span class="size-sub">박스당 15포</span>
+        </button>
+      </div>
+      <input type="hidden" id="recv-size" value="200">
     </div>
     <div class="form-row">
       <label>박스 수량</label>
@@ -587,6 +617,13 @@ async function delPrescription(id) {
 // ─── 입고 ─────────────────────────────────────────────────────────────────────
 function initRecvForm() {
   document.getElementById('recv-date').value = todayStr();
+}
+
+function selectSize(btn) {
+  document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('recv-size').value = btn.dataset.size;
+  calcRecvPouches();
 }
 
 function calcRecvPouches() {
