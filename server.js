@@ -2,6 +2,7 @@ const express = require('express');
 const Database = require('better-sqlite3');
 const cors = require('cors');
 const path = require('path');
+const XLSX = require('xlsx');
 
 const app = express();
 const dbPath = process.env.DB_PATH || 'harmonilan.db';
@@ -196,6 +197,70 @@ app.get('/api/summary', (req, res) => {
   }
 
   res.json(result);
+});
+
+// ─── 엑셀 다운로드 API ──────────────────────────────────────────────────────
+
+app.get('/api/export', (req, res) => {
+  const { year, month } = req.query;
+  if (!year || !month) return res.status(400).json({ error: 'year, month 필요' });
+  const ym = `${year}-${String(month).padStart(2, '0')}`;
+
+  const wb = XLSX.utils.book_new();
+
+  // 요약 시트
+  const summaryRows = [['용량', '처방(포)', '입고(박스)', '입고(포)', '사용(포)', '미입고(포)', '현재재고(포)']];
+  for (const size of [200, 500]) {
+    const totalPrescription = db.prepare("SELECT COALESCE(SUM(pouches),0) as total FROM prescriptions WHERE date LIKE ? AND size=?").get(`${ym}%`, size).total;
+    const totalReceipt = db.prepare("SELECT COALESCE(SUM(pouches),0) as total, COALESCE(SUM(boxes),0) as boxes FROM receipts WHERE date LIKE ? AND size=?").get(`${ym}%`, size);
+    const totalUsage = db.prepare("SELECT COALESCE(SUM(pouches),0) as total FROM usages WHERE date LIKE ? AND size=?").get(`${ym}%`, size).total;
+    const totalReceiptAll = db.prepare("SELECT COALESCE(SUM(pouches),0) as total FROM receipts WHERE size=?").get(size).total;
+    const totalUsageAll = db.prepare("SELECT COALESCE(SUM(pouches),0) as total FROM usages WHERE size=?").get(size).total;
+    summaryRows.push([
+      `${size}ml`, totalPrescription, totalReceipt.boxes, totalReceipt.total,
+      totalUsage, totalPrescription - totalReceipt.total, totalReceiptAll - totalUsageAll
+    ]);
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryRows), '요약');
+
+  // 층별 사용량 시트
+  const floorRows = [['용량', '2층', '3층', '4층', '5층', '6층', '7층', '합계']];
+  for (const size of [200, 500]) {
+    const row = [`${size}ml`];
+    let total = 0;
+    for (let f = 2; f <= 7; f++) {
+      const v = db.prepare("SELECT COALESCE(SUM(pouches),0) as total FROM usages WHERE date LIKE ? AND size=? AND floor=?").get(`${ym}%`, size, f).total;
+      row.push(v);
+      total += v;
+    }
+    row.push(total);
+    floorRows.push(row);
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(floorRows), '층별사용량');
+
+  // 처방 상세
+  const prescriptions = db.prepare("SELECT date, size, pouches, entered_by, note FROM prescriptions WHERE date LIKE ? ORDER BY date").all(`${ym}%`);
+  const prescRows = [['날짜', '용량(ml)', '처방량(포)', '입력자', '비고']];
+  prescriptions.forEach(p => prescRows.push([p.date, p.size, p.pouches, p.entered_by, p.note || '']));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(prescRows), '처방기록');
+
+  // 입고 상세
+  const receipts = db.prepare("SELECT date, size, boxes, pouches, entered_by, note FROM receipts WHERE date LIKE ? ORDER BY date").all(`${ym}%`);
+  const recvRows = [['날짜', '용량(ml)', '박스수', '입고량(포)', '입력자', '비고']];
+  receipts.forEach(r => recvRows.push([r.date, r.size, r.boxes, r.pouches, r.entered_by, r.note || '']));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(recvRows), '입고기록');
+
+  // 사용 상세
+  const usages = db.prepare("SELECT date, floor, size, pouches, entered_by, note FROM usages WHERE date LIKE ? ORDER BY date, floor").all(`${ym}%`);
+  const useRows = [['날짜', '층', '용량(ml)', '사용량(포)', '입력자', '비고']];
+  usages.forEach(u => useRows.push([u.date, `${u.floor}층`, u.size, u.pouches, u.entered_by, u.note || '']));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(useRows), '사용기록');
+
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  const filename = encodeURIComponent(`하모닐란_재고현황_${ym}.xlsx`);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${filename}`);
+  res.send(buf);
 });
 
 const PORT = process.env.PORT || 3000;

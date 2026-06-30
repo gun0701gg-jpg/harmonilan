@@ -504,6 +504,8 @@
     <button onclick="changeReportMonth(1)">›</button>
   </div>
 
+  <button class="btn btn-green" style="margin-bottom:14px" onclick="downloadExcel()">📥 엑셀로 다운로드</button>
+
   <div id="report-200"></div>
   <div id="report-500"></div>
 </div>
@@ -575,6 +577,11 @@ function changePrescMonth(d) { shiftMonth('presc', d); loadPrescriptions(); }
 function changeRecvMonth(d) { shiftMonth('recv', d); loadReceipts(); }
 function changeUseMonth(d) { shiftMonth('use', d); loadUsages(); }
 function changeReportMonth(d) { shiftMonth('report', d); loadReport(); }
+
+function downloadExcel() {
+  const { year, month } = state.report;
+  window.location.href = `/api/export?year=${year}&month=${month}`;
+}
 
 // ─── 대시보드 ─────────────────────────────────────────────────────────────────
 async function loadDashboard() {
